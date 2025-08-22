@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+# Invokes a pre-configured NetworkManager connection for a F5 VPN from a
+# `f5-vpn://` link.
+set -e
+
+readonly USER_AGENT='User-Agent: Mozilla/5.0 (Linux) F5Launcher/1.0'
+readonly CONF="${HOME}/.config/nm-f5vpn-sso.conf"
+
+function usage() {
+  echo "Usage: $(basename "$0") <f5-vpn URL>"
+}
+
+function main() {
+  if [[ $# -lt 1 ]]; then
+    usage >&2
+    exit 1
+  fi
+
+  url="$1"
+  if [[ ! "${url}" =~ ^f5-vpn:// ]]; then
+    echo "Invalid URL: ${url}" >&2
+    exit 1
+  fi
+
+  if [[ ! -f "${CONF}" ]]; then
+    echo "Requires NetworkManager connection ID set in ${CONF}" >&2
+    exit 1
+  fi
+
+  read -r nm_conn_id <"${CONF}" || true
+  if [[ -z "${nm_conn_id}" ]]; then
+    echo "No NetworkManager connection ID found in ${CONF}" >&2
+    exit 1
+  fi
+
+  if ! nmcli connection show id "${nm_conn_id}"; then
+    echo "NetworkManager connection ID not found: ${nm_conn_id}" >&2
+    exit 1
+  fi
+
+  declare -A p
+
+  # Parse through sed twice to process newly created lines
+  pairs="$(echo "${url}" |\
+    sed -e 's|^.*?||' -e 's|&|\n|g' |\
+    sed 's|=| |'
+  )"
+
+  while read -r key value; do
+    p["${key}"]="${value}"
+  done <<< "${pairs}"
+
+  for param in otc protocol port server token; do
+    if [[ -z "${p[${param}]}" ]]; then
+      echo "f5-vpn URL missing parameter: ${param}" >&2
+      exit 1
+    fi
+  done
+
+  server="${p[server]}"
+  base_url="${p[protocol]}://${server}:${p[port]}"
+  otc="${p[otc]}"
+  token="${p[token]}"
+
+  session_id="$(curl -s --compressed \
+    -o /dev/null \
+    -w '%header{X-ACCESS-Session-ID}' \
+    -A "${USER_AGENT}" \
+    -H 'Content-Type: application/x-www-form-urlencoded' \
+    -H "X-ACCESS-Session-Token: ${otc}" \
+    -H 'Connection: Keep-Alive' \
+    -H 'Accept-Language: en-US,*' \
+    "${base_url}/vdesk/get_sessid_for_token.php3"
+  )"
+
+  if [[ -z "${session_id}" ]]; then
+    echo "Failed to extract session ID" >&2
+    exit 1
+  fi
+
+  if [[ -n "${DEBUG}" ]]; then
+    echo "Session ID: ${session_id}"
+    echo "OTC: ${otc}"
+    echo "Token: ${token}"
+  fi
+
+  # Register a successful extraction, which removes the banner on the F5 page.
+  curl -s --compressed \
+    -o /dev/null \
+    -A "${USER_AGENT}" \
+    -H 'Content-Type: application/x-www-form-urlencoded' \
+    -b "NAToken=${token}" \
+    -b "MRHSession=${session_id}" \
+    -H 'Connection: Keep-Alive' \
+    -H 'Accept-Language: en-US,*' \
+    "${base_url}/my.report.na"
+
+  nm_passwd_file="$(cat <<EOD
+vpn.secrets.cookie:${session_id}
+vpn.secrets.gateway:${server}
+vpn.secrets.gwcert:
+EOD
+)"
+  nmcli conn up id "${nm_conn_id}" passwd-file <(echo "${nm_passwd_file}")
+}
+
+main "$@"
