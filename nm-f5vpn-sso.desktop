@@ -3,4 +3,5 @@ Type=Application
 Name=NetworkManager F5 VPN with SSO
 Exec=nm-f5vpn-sso %u
 MimeType=x-scheme-handler/f5-vpn;
-NoDisplay=false
+NoDisplay=true
+StartupNotify=false
