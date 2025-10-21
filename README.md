@@ -9,7 +9,7 @@ Use the following to install the entry locally.
 desktop-file-install \
   --dir="${HOME}/.local/share/applications" \
   ./nm-f5vpn-sso.desktop
-update-desktop-database "${HOME}/.local/share/applications"
+update-desktop-database "${HOME}/.config"
 ```
 
 Adjust the executable path as needed.
