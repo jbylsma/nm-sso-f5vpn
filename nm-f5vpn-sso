@@ -3,7 +3,7 @@
 # `f5-vpn://` link.
 set -e
 
-readonly USER_AGENT='User-Agent: Mozilla/5.0 (Linux) F5Launcher/1.0'
+readonly USER_AGENT='Mozilla/5.0 (Linux) F5Launcher/1.0'
 readonly CONF="${HOME}/.config/nm-f5vpn-sso.conf"
 
 function usage() {
