@@ -33,7 +33,7 @@ function main() {
     exit 1
   fi
 
-  if ! nmcli connection show id "${nm_conn_id}"; then
+  if ! nmcli connection show id "${nm_conn_id}" >/dev/null 2>&1; then
     echo "NetworkManager connection ID not found: ${nm_conn_id}" >&2
     exit 1
   fi
