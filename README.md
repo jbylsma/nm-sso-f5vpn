@@ -12,4 +12,5 @@ desktop-file-install \
 update-desktop-database "${HOME}/.config"
 ```
 
-Adjust the executable path as needed.
+After installing the desktop entry, the full path must be manually added to the
+`Exec` property.
