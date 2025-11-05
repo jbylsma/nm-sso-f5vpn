@@ -99,6 +99,7 @@ function main() {
 vpn.secrets.cookie:${session_id}
 vpn.secrets.gateway:${server}
 vpn.secrets.gwcert:
+vpn.secrets.resolve:
 EOD
 )"
   nmcli conn up id "${nm_conn_id}" passwd-file <(echo "${nm_passwd_file}")
